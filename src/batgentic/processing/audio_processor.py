@@ -5,13 +5,20 @@ Handles audio processing for bat call sonification using librosa.
 Provides pitch shifting functionality to make ultrasonic bat calls audible to humans.
 """
 
-import librosa
-import soundfile as sf
+try:
+    import librosa
+    import soundfile as sf
+    AUDIO_LIBS_AVAILABLE = True
+except ImportError:
+    # Audio libraries not available - this is OK for demo mode
+    librosa = None
+    sf = None
+    AUDIO_LIBS_AVAILABLE = False
+
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 import logging
-from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,6 +30,8 @@ class AudioProcessor:
     
     Handles loading, processing, and saving of bat call audio files
     with pitch shifting to make ultrasonic calls audible to humans.
+    
+    Note: Requires librosa and soundfile for full functionality.
     """
     
     def __init__(self, sample_rate: int = 22050):
@@ -32,6 +41,11 @@ class AudioProcessor:
         Args:
             sample_rate: Target sample rate for processing (default: 22050 Hz)
         """
+        if not AUDIO_LIBS_AVAILABLE:
+            raise ImportError(
+                "Audio processing libraries not available. "
+                "Install with: pip install librosa soundfile"
+            )
         self.sample_rate = sample_rate
         self.processed_audio = {}
         

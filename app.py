@@ -24,11 +24,20 @@ sys.path.append(str(Path(__file__).parent / "src"))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import our custom modules
+# Import our custom modules - with graceful handling for cloud deployment
 try:
-    from batgentic import SonoBatParser, AudioProcessor, create_output_directory, validate_audio_file
+    from batgentic.processing.sonobat_parser import SonoBatParser
+    from batgentic.utils.utils import create_output_directory, validate_audio_file
+    AUDIO_PROCESSING_AVAILABLE = True
+    try:
+        from batgentic.processing.audio_processor import AudioProcessor
+    except ImportError:
+        # Audio processing not available in cloud demo - that's OK!
+        AudioProcessor = None
+        AUDIO_PROCESSING_AVAILABLE = False
 except ImportError as e:
-    st.error(f"BatGentic modules not found: {e}. Please install the package first.")
+    st.error(f"BatGentic modules not found: {e}")
+    st.error("Please check the package installation and file paths.")
     st.stop()
 
 # Page configuration
@@ -71,7 +80,7 @@ st.markdown("""
 if 'parser' not in st.session_state:
     st.session_state.parser = SonoBatParser()
 if 'processor' not in st.session_state:
-    st.session_state.processor = AudioProcessor()
+    st.session_state.processor = AudioProcessor() if AUDIO_PROCESSING_AVAILABLE else None
 if 'validation_data' not in st.session_state:
     st.session_state.validation_data = None
 if 'processed_files' not in st.session_state:
@@ -83,11 +92,15 @@ def main():
     
     # Header
     st.markdown('<div class="main-header">🦇 BatGentic</div>', unsafe_allow_html=True)
-    st.markdown("""
+    demo_subtitle = "Cloud Demo - Data Analysis & Visualization" if not AUDIO_PROCESSING_AVAILABLE else "Interactive Bioacoustic Analysis Tool for Bat Call Validation and Sonification"
+    st.markdown(f"""
     <div style="text-align: center; margin-bottom: 2rem; color: #666;">
-        Interactive Bioacoustic Analysis Tool for Bat Call Validation and Sonification
+        {demo_subtitle}
     </div>
     """, unsafe_allow_html=True)
+    
+    if not AUDIO_PROCESSING_AVAILABLE:
+        st.info("🎯 **Demo Mode:** Showcasing data parsing, species analysis, and visualization capabilities. Audio processing available in local installation.")
     
     # Sidebar
     with st.sidebar:
@@ -254,6 +267,24 @@ def audio_processing_tab(pitch_shift: float, sample_rate: int):
     
     st.header("🔊 Audio Processing")
     
+    if not AUDIO_PROCESSING_AVAILABLE:
+        st.info("🎵 **Audio Processing Demo Mode**")
+        st.markdown("""
+        Audio processing features are available in the local installation but not in this cloud demo.
+        
+        **This demo focuses on:**
+        - ✅ SonoBat validation file parsing
+        - ✅ Species analysis and visualization  
+        - ✅ Data filtering and export capabilities
+        - ✅ Professional data processing workflows
+        
+        **For full audio processing capabilities:**
+        - Clone the repository: `git clone https://github.com/qxaminer/batgentic.git`
+        - Install with audio dependencies: `pip install librosa soundfile`
+        - Run locally: `streamlit run app.py`
+        """)
+        return
+    
     if st.session_state.validation_data is None:
         st.info("👆 Please upload and parse a validation file first.")
         return
@@ -374,13 +405,23 @@ def audio_processing_tab(pitch_shift: float, sample_rate: int):
                         status_text.text(f"Processing: {Path(input_path).name} ({i+1}/{len(processing_list)})")
                         
                         # Process single file
-                        st.session_state.processor.sample_rate = sample_rate
-                        metadata = st.session_state.processor.process_single_file(
-                            input_path, output_path, pitch_shift
-                        )
-                        metadata['species'] = species
-                        metadata['status'] = 'success'
-                        results.append(metadata)
+                        if st.session_state.processor:
+                            st.session_state.processor.sample_rate = sample_rate
+                            metadata = st.session_state.processor.process_single_file(
+                                input_path, output_path, pitch_shift
+                            )
+                            metadata['species'] = species
+                            metadata['status'] = 'success'
+                            results.append(metadata)
+                        else:
+                            # Audio processing not available in demo mode
+                            metadata = {
+                                'input_path': str(input_path),
+                                'species': species,
+                                'status': 'demo_mode',
+                                'message': 'Audio processing available in local installation'
+                            }
+                            results.append(metadata)
                         
                     except Exception as e:
                         error_metadata = {
