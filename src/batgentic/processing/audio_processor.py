@@ -223,8 +223,8 @@ class AudioProcessor:
         results = []
         failed_files = []
         
-        # Setup progress bar
-        iterator = tqdm(file_paths, desc="Processing audio files") if show_progress else file_paths
+        # Setup progress bar - simplified for cloud deployment
+        iterator = file_paths
         
         for species, input_path, output_path in iterator:
             try:
@@ -235,8 +235,8 @@ class AudioProcessor:
                 
                 results.append(metadata)
                 
-                if show_progress:
-                    iterator.set_postfix({'current': input_path.name, 'species': species})
+                # Progress tracking simplified for cloud deployment
+                logger.debug(f"Processing {input_path.name} for species {species}")
                     
             except Exception as e:
                 error_info = {
