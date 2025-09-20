@@ -1,0 +1,11 @@
+Filename	Species	Confidence	Duration	Frequency_Peak	Quality
+S4U12318_20250919_173833.wav	Myotis lucifugus	0.85	2.3	45000	Good
+S4U12318_20250919_173845.wav	Eptesicus fuscus	0.92	1.8	35000	Excellent
+S4U12318_20250919_173900.wav	Tadarida brasiliensis	0.78	3.1	25000	Good
+S4U12318_20250919_174015.wav	Myotis lucifugus	0.88	2.1	44000	Good
+S4U12318_20250919_174030.wav	Lasiurus borealis	0.73	2.8	38000	Fair
+S4U12318_20250919_174045.wav	Eptesicus fuscus	0.91	1.9	36000	Excellent
+S4U12318_20250919_174100.wav	Myotis lucifugus	0.82	2.5	43000	Good
+S4U12318_20250919_174115.wav	Tadarida brasiliensis	0.79	3.3	26000	Good
+S4U12318_20250919_174130.wav	Lasiurus cinereus	0.86	2.2	32000	Good
+S4U12318_20250919_174145.wav	Myotis lucifugus	0.89	2.0	45000	Excellent
