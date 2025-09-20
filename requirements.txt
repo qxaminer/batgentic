@@ -3,8 +3,7 @@ streamlit
 pandas
 numpy
 
-# Data visualization  
-plotly
+# Basic visualization (plotly handled gracefully if missing)
 matplotlib
 
 # Data handling

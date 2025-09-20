@@ -7,8 +7,6 @@ Interactive web interface for bioacoustic analysis tool for bat call validation 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 from pathlib import Path
 import tempfile
 import zipfile
@@ -16,6 +14,20 @@ import io
 import logging
 import sys
 from typing import Dict, List, Optional, Tuple
+
+# Try to import plotly, fall back to matplotlib if not available
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    px = None
+    go = None
+    PLOTLY_AVAILABLE = False
+    # Import matplotlib as fallback
+    import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
 
 # Add src to path so we can import from our package structure
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -227,26 +239,35 @@ def upload_and_parse_tab(min_confidence: float):
                         columns=['Species', 'Count']
                     )
                     
-                    fig = px.bar(
-                        species_df,
-                        x='Species',
-                        y='Count',
-                        title="Number of Validated Calls by Species"
-                    )
-                    fig.update_layout(xaxis_tickangle=-45)
-                    st.plotly_chart(fig, use_container_width=True)
+                    if PLOTLY_AVAILABLE:
+                        fig = px.bar(
+                            species_df,
+                            x='Species',
+                            y='Count',
+                            title="Number of Validated Calls by Species"
+                        )
+                        fig.update_layout(xaxis_tickangle=-45)
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        # Fallback to simple bar chart display
+                        st.bar_chart(species_df.set_index('Species'))
                 
                 # Confidence score distribution
                 try:
                     confidence_col = st.session_state.parser._find_confidence_column()
                     
-                    fig = px.histogram(
-                        validated_calls,
-                        x=confidence_col,
-                        title="Confidence Score Distribution",
-                        nbins=20
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                    if PLOTLY_AVAILABLE:
+                        fig = px.histogram(
+                            validated_calls,
+                            x=confidence_col,
+                            title="Confidence Score Distribution",
+                            nbins=20
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        # Simple histogram with streamlit
+                        st.subheader("📈 Confidence Score Distribution")
+                        st.histogram_chart(validated_calls[confidence_col])
                     
                 except Exception as e:
                     st.warning(f"Could not display confidence distribution: {e}")
@@ -516,14 +537,20 @@ def analysis_tab():
         # Species vs Confidence
         st.subheader("📈 Species vs Confidence Analysis")
         
-        fig = px.box(
-            data,
-            x=species_col,
-            y=conf_col,
-            title="Confidence Score Distribution by Species"
-        )
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        if PLOTLY_AVAILABLE:
+            fig = px.box(
+                data,
+                x=species_col,
+                y=conf_col,
+                title="Confidence Score Distribution by Species"
+            )
+            fig.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            # Simple visualization without plotly
+            st.write("**Species vs Confidence Summary:**")
+            species_conf_summary = data.groupby(species_col)[conf_col].agg(['mean', 'std', 'count']).round(3)
+            st.dataframe(species_conf_summary)
         
         # Processing duration analysis (if available)
         if st.session_state.processed_files:
@@ -534,15 +561,19 @@ def analysis_tab():
                 
                 durations_df = pd.DataFrame(processing_data)
                 
-                fig = px.scatter(
-                    durations_df,
-                    x='original_duration',
-                    y='processed_duration',
-                    color='species',
-                    title="Original vs Processed Duration",
-                    labels={'original_duration': 'Original Duration (s)', 'processed_duration': 'Processed Duration (s)'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                if PLOTLY_AVAILABLE:
+                    fig = px.scatter(
+                        durations_df,
+                        x='original_duration',
+                        y='processed_duration',
+                        color='species',
+                        title="Original vs Processed Duration",
+                        labels={'original_duration': 'Original Duration (s)', 'processed_duration': 'Processed Duration (s)'}
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.write("**Processing Duration Summary:**")
+                    st.dataframe(durations_df[['species', 'original_duration', 'processed_duration']])
         
     except Exception as e:
         st.warning(f"Could not generate all visualizations: {e}")
