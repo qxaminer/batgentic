@@ -1,13 +1,6 @@
-# Core dependencies for BatGentic Streamlit Demo
+# Ultra-minimal requirements for guaranteed Streamlit Cloud deployment
 streamlit
 pandas
 numpy
-
-# Basic visualization (plotly handled gracefully if missing)
-matplotlib
-
-# Data handling
 pyyaml
-
-# For Excel export functionality
 openpyxl

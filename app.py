@@ -15,7 +15,7 @@ import logging
 import sys
 from typing import Dict, List, Optional, Tuple
 
-# Try to import plotly, fall back to matplotlib if not available
+# Try to import plotly, fall back gracefully if not available
 try:
     import plotly.express as px
     import plotly.graph_objects as go
@@ -24,10 +24,17 @@ except ImportError:
     px = None
     go = None
     PLOTLY_AVAILABLE = False
-    # Import matplotlib as fallback
+
+# Try to import matplotlib for fallbacks
+try:
     import matplotlib.pyplot as plt
     import matplotlib
     matplotlib.use('Agg')  # Use non-interactive backend
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    plt = None
+    matplotlib = None
+    MATPLOTLIB_AVAILABLE = False
 
 # Add src to path so we can import from our package structure
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -249,8 +256,13 @@ def upload_and_parse_tab(min_confidence: float):
                         fig.update_layout(xaxis_tickangle=-45)
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        # Fallback to simple bar chart display
+                        # Fallback to Streamlit native chart
+                        st.subheader("🦇 Species Distribution")
                         st.bar_chart(species_df.set_index('Species'))
+                        
+                        # Also show as a nice table
+                        st.write("**Species Counts:**")
+                        st.dataframe(species_df, use_container_width=True)
                 
                 # Confidence score distribution
                 try:
@@ -265,9 +277,24 @@ def upload_and_parse_tab(min_confidence: float):
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        # Simple histogram with streamlit
+                        # Streamlit native visualization
                         st.subheader("📈 Confidence Score Distribution")
-                        st.histogram_chart(validated_calls[confidence_col])
+                        
+                        # Create bins for histogram-like display
+                        conf_data = validated_calls[confidence_col].dropna()
+                        if len(conf_data) > 0:
+                            # Simple line chart showing distribution
+                            hist_data = conf_data.value_counts().sort_index()
+                            st.line_chart(hist_data)
+                            
+                            # Show statistics
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Mean", f"{conf_data.mean():.3f}")
+                            with col2:
+                                st.metric("Median", f"{conf_data.median():.3f}")
+                            with col3:
+                                st.metric("Std Dev", f"{conf_data.std():.3f}")
                     
                 except Exception as e:
                     st.warning(f"Could not display confidence distribution: {e}")
@@ -547,10 +574,16 @@ def analysis_tab():
             fig.update_layout(xaxis_tickangle=-45)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            # Simple visualization without plotly
-            st.write("**Species vs Confidence Summary:**")
-            species_conf_summary = data.groupby(species_col)[conf_col].agg(['mean', 'std', 'count']).round(3)
-            st.dataframe(species_conf_summary)
+            # Streamlit native visualization
+            st.write("**Species vs Confidence Analysis:**")
+            species_conf_summary = data.groupby(species_col)[conf_col].agg(['mean', 'std', 'min', 'max', 'count']).round(3)
+            species_conf_summary.columns = ['Avg Confidence', 'Std Dev', 'Min', 'Max', 'Count']
+            st.dataframe(species_conf_summary, use_container_width=True)
+            
+            # Show a simple line chart of average confidence by species
+            avg_conf = data.groupby(species_col)[conf_col].mean().sort_values(ascending=False)
+            st.subheader("Average Confidence by Species")
+            st.bar_chart(avg_conf)
         
         # Processing duration analysis (if available)
         if st.session_state.processed_files:
@@ -572,8 +605,9 @@ def analysis_tab():
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.write("**Processing Duration Summary:**")
-                    st.dataframe(durations_df[['species', 'original_duration', 'processed_duration']])
+                    st.write("**Processing Duration Analysis:**")
+                    duration_summary = durations_df.groupby('species')[['original_duration', 'processed_duration']].mean().round(2)
+                    st.dataframe(duration_summary, use_container_width=True)
         
     except Exception as e:
         st.warning(f"Could not generate all visualizations: {e}")
